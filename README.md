@@ -58,52 +58,6 @@ This playbook will create a storage location on node 3 by default. You can use o
 
 If using filesystem (`storage_type: filesystem`), make sure to use the appropriate `storage_nfs_dir` variable in `config.yml`.
 
-#### ZFS Storage
-
-If using ZFS (`storage_type: zfs`, you should have two volumes available on node 3, `/dev/sda`, and `/dev/sdb`, able to be pooled into a mirror. Make sure your two SATA drives are wiped:
-
-```
-pi@node3:~ $ sudo wipefs --all --force /dev/sda?; sudo wipefs --all --force /dev/sda
-pi@node3:~ $ sudo wipefs --all --force /dev/sdb?; sudo wipefs --all --force /dev/sdb
-```
-
-If you run `lsblk`, you should see `sda` and `sdb` have no partitions, and are ready to use:
-
-```
-pi@node3:~ $ lsblk
-NAME        MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
-sda           8:0    0  1.8T  0 disk 
-sdb           8:16   0  1.8T  0 disk 
-```
-
-You should also make sure the `storage_nfs_dir` variable is set appropriately for ZFS in your `config.yml`.
-
-This ZFS layout was configured originally for the Turing Pi 2 board, which has two built-in SATA ports connected directly to node 3. In the future, the configuration may be genericized a bit better.
-
-#### Ceph Storage Configuration
-
-You could also run Ceph on a Pi cluster—see the storage configuration playbook inside the `ceph` directory.
-
-This configuration is not yet integrated into the general K3s setup.
-
-### Cluster configuration and K3s installation
-
-Run the playbook:
-
-```
-ansible-playbook main.yml
-```
-
-At the end of the playbook, there should be an instance of Drupal running on the cluster. If you log into node 1, you should be able to access it with `curl localhost`.
-
-Alternatively, if you have SSH tunnelling configured (see later section), you could access `http://[your-vps-ip-or-hostname]:8080/` and you'd see the site.
-
-You can also log into node 1, switch to the root user account (`sudo su`), then use `kubectl` to manage the cluster (e.g. view Drupal pods with `kubectl get pods -n drupal`).
-
-The Kubernetes Ingress object for Drupal (how HTTP requests from outside the cluster make it to Drupal) can be found by running `kubectl get ingress -n drupal`. Take the IP address or hostname there and enter it in your browser on a computer on the same network, and voila! You should see Drupal's installer.
-
-K3s' `kubeconfig` file is located at `/etc/rancher/k3s/k3s.yaml`. If you'd like to manage the cluster from other hosts (or using a tool like Lens), copy the contents of that file, replacing `localhost` with the IP address or hostname of the control plane node, and paste the contents into a file `~/.kube/config`.
-
 ### Upgrading the cluster
 
 Run the upgrade playbook:
@@ -155,7 +109,7 @@ ansible-playbook networking.yml
 After running the playbook, until a reboot, the Pis will still be accessible over their former DHCP-assigned IP address. After the nodes are rebooted, you will need to make sure your workstation is connected to an interface using the same subnet as the cluster (e.g. 10.1.1.x).
 
 > Note: After the networking changes are made, since this playbook uses DNS names (e.g. `node1.local`) instead of IP addresses, your computer will still be able to connect to the nodes directly—assuming your network has IPv6 support. Pinging the nodes on their new IP addresses will _not_ work, however. For better network compatibility, it's recommended you set up a separate network interface on the Ansible controller that's on the same subnet as the Pis in the cluster:
-> 
+>
 > On my Mac, I connected a second network interface and manually configured its IP address as `10.1.1.10`, with subnet mask `255.255.255.0`, and that way I could still access all the nodes via IP address or their hostnames (e.g. `node2.local`).
 
 Because the cluster subnet needs its own router, node 1 is configured as a router, using `wlan0` as the primary interface for Internet traffic by default. The other nodes get their Internet access through node 1.

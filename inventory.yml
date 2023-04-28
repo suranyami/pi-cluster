@@ -1,0 +1,6 @@
+virtualmachines:
+  hosts:
+    node1:
+      ansible_host: node1.local
+    node3:
+      ansible_host: node3.local
