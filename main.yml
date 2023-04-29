@@ -8,6 +8,11 @@
     - name: Reboot-pi
       ansible.builtin.reboot:
 
+    - name: Restart nfs
+      ansible.builtin.service:
+        name: nfs-server
+        state: restarted
+
   vars_files:
     - config.yml
 
@@ -21,6 +26,16 @@
         - "cgroup_memory=1"
         - "cgroup_enable=memory"
       notify: reboot-pi
+
+- name: Ensure docker on everything
+  hosts: all
+  gather_facts: false
+  become: true
+  vars_files:
+    - config.yml
+  tasks:
+    - name: Ensure Docker installed
+      ansible.builtin.include_tasks: tasks/docker.yml
 
 - name: Configure storage node.
   hosts: storage
@@ -46,27 +61,7 @@
     - name: Ensure required dependencies are installed.
       ansible.builtin.package:
         name:
-          - python3-pip
-          - python3-setuptools
           - build-essential
-          - golang
           - git
         state: present
       become: true
-
-    - name: Ensure required Python libraries are installed.
-      ansible.builtin.pip:
-        name:
-          - openshift
-          - pyyaml
-        state: present
-      become: true
-
-- name: Configure the worker nodes.
-  hosts: nodes
-  gather_facts: false
-  become: true
-  vars_files:
-    - config.yml
-  roles:
-    - portainer-agent
