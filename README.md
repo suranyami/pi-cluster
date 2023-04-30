@@ -13,7 +13,7 @@ The inspiration for this project was my first Pi cluster, the [Raspberry Pi Dram
 ## Usage
 
   1. Make sure you have [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) installed.
-  2. Copy the `example.hosts.ini` inventory file to `hosts.ini`. Make sure it has the `control_plane` and `node`s configured correctly (for my examples I named my nodes `node[1-4].local`).
+  2. Copy the `example.hosts.ini` inventory file to `hosts.ini`. Make sure it has the `manager` and `node`s configured correctly (for my examples I named my nodes `node[1-4].local`).
   3. Copy the `example.config.yml` file to `config.yml`, and modify the variables to your liking.
 
 ### Raspberry Pi Setup
@@ -92,7 +92,7 @@ The safest way to shut down the cluster is to run the following command:
 ansible all -m community.general.shutdown -b
 ```
 
-> Note: If using the SSH tunnel, you might want to run the command _first_ on nodes 2-4, _then_ on node 1. So first run `ansible 'all:!control_plane' [...]`, then run it again just for `control_plane`.
+> Note: If using the SSH tunnel, you might want to run the command _first_ on nodes 2-4, _then_ on node 1. So first run `ansible 'all:!manager' [...]`, then run it again just for `manager`.
 
 Then after you confirm the nodes are shut down (with K3s running, it can take a few minutes), press the cluster's power button (or yank the Ethernet cables if using PoE) to power down all Pis physically. Then you can switch off or disconnect your power supply.
 

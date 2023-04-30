@@ -2,7 +2,6 @@
 - name: Set up cluster-wide configuration.
   hosts: cluster
   gather_facts: true
-  become: true
 
   handlers:
     - name: Reboot-pi
@@ -29,34 +28,20 @@
 
 - name: Ensure docker on everything
   hosts: all
-  gather_facts: false
+  gather_facts: true
   become: true
   vars_files:
     - config.yml
   tasks:
     - name: Ensure Docker installed
-      ansible.builtin.include_tasks: tasks/docker.yml
+      ansible.builtin.include_tasks: tasks/docker/docker.yml
 
-- name: Configure storage node.
-  hosts: storage
+- name: Configure the Manager.
+  hosts: manager
   gather_facts: false
   become: true
-
   vars_files:
     - config.yml
-
-  tasks:
-    - name: Set up storage
-      ansible.builtin.include_tasks: tasks/storage/{{ storage_type }}.yml
-
-- name: Configure the control plane.
-  hosts: control_plane
-  gather_facts: false
-  become: true
-
-  vars_files:
-    - config.yml
-
   tasks:
     - name: Ensure required dependencies are installed.
       ansible.builtin.package:
@@ -65,3 +50,29 @@
           - git
         state: present
       become: true
+    - name: Ensure Docker-swarm installed
+      ansible.builtin.include_tasks: tasks/docker/swarm-manager.yml
+
+- name: Ensure portainer-agent on nodes
+  hosts: nodes
+  gather_facts: false
+  become: true
+  vars_files:
+    - config.yml
+  tasks:
+    - name: Ensure nodes join swarm
+      ansible.builtin.include_tasks: tasks/docker/swarm-nodes.yml
+    - name: Ensure portainer-agent installed
+      ansible.builtin.include_tasks: tasks/portainer/agent.yml
+
+# - name: Configure storage node.
+#   hosts: storage
+#   gather_facts: false
+#   become: true
+
+#   vars_files:
+#     - config.yml
+
+#   tasks:
+#     - name: Set up storage
+#       ansible.builtin.include_tasks: tasks/storage/{{ storage_type }}.yml
