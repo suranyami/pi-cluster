@@ -1,7 +1,7 @@
 ---
 - name: Set up cluster-wide configuration.
   hosts: cluster
-  gather_facts: true
+  gather_facts: false
 
   handlers:
     - name: Reboot-pi
@@ -39,7 +39,6 @@
 - name: Configure the Manager.
   hosts: manager
   gather_facts: false
-  become: true
   vars_files:
     - config.yml
   tasks:
@@ -50,8 +49,15 @@
           - git
         state: present
       become: true
-    - name: Ensure Docker-swarm installed
-      ansible.builtin.include_tasks: tasks/docker/swarm-manager.yml
+    - name: Initialize the cluster using docker swarm
+      community.docker.docker_swarm:
+        state: present
+    - name: Get join command
+      ansible.builtin.shell: "docker swarm join-token worker | grep join"
+      register: join_command_raw
+    - name: Set join command
+      ansible.builtin.set_fact:
+        join_command: "{{ join_command_raw.stdout_lines[0] }}"
 
 - name: Ensure portainer-agent on nodes
   hosts: nodes
@@ -60,8 +66,14 @@
   vars_files:
     - config.yml
   tasks:
-    - name: Ensure nodes join swarm
-      ansible.builtin.include_tasks: tasks/docker/swarm-nodes.yml
+    - name: Updated facts
+      ansible.builtin.debug:
+        var: hostvars
+    - name: Join swarm
+      ansible.builtin.shell: "{{ hostvars[groups['manager'][0]]['join_command'] }} >> node_joined.txt"
+      args:
+        chdir: $HOME
+        creates: node_joined.txt
     - name: Ensure portainer-agent installed
       ansible.builtin.include_tasks: tasks/portainer/agent.yml
 

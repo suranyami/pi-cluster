@@ -3,10 +3,14 @@
   community.docker.docker_swarm:
     state: present
 
-- name: get join command
+- name: Get join command
   ansible.builtin.shell: "docker swarm join-token worker | grep join"
   register: join_command_raw
 
-- name: set join command
-  set_fact:
+- name: Set join command
+  ansible.builtin.set_fact:
     join_command: "{{ join_command_raw.stdout_lines[0] }}"
+
+- name: Updated facts
+  ansible.builtin.debug:
+    var: join_command
