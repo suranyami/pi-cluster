@@ -52,6 +52,11 @@
     - name: Initialize the cluster using docker swarm
       community.docker.docker_swarm:
         state: present
+    - name: Create monitor network
+      community.docker.docker_network:
+        name: portainer_agent_network
+        driver: overlay
+        attachable: yes
     - name: Get join command
       ansible.builtin.shell: "docker swarm join-token worker | grep join"
       register: join_command_raw
@@ -66,16 +71,13 @@
   vars_files:
     - config.yml
   tasks:
-    - name: Updated facts
-      ansible.builtin.debug:
-        var: hostvars
     - name: Join swarm
       ansible.builtin.shell: "{{ hostvars[groups['manager'][0]]['join_command'] }} >> node_joined.txt"
       args:
         chdir: $HOME
         creates: node_joined.txt
-    - name: Ensure portainer-agent installed
-      ansible.builtin.include_tasks: tasks/portainer/agent.yml
+    # - name: Ensure portainer-agent installed
+    #   ansible.builtin.include_tasks: tasks/portainer/agent.yml
 
 # - name: Configure storage node.
 #   hosts: storage

@@ -1,10 +1,4 @@
 ---
-- name: Create monitor network
-  docker_network:
-    name: portainer_agent_network
-    driver: overlay
-    attachable: yes
-
 - name: Deploy monitor agent
   docker_swarm_service:
     name: portainer_agent
