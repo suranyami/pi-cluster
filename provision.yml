@@ -1,0 +1,34 @@
+---
+- hosts: gluster
+  vars_files:
+    - config.yml
+
+  tasks:
+    - name: Ensure Gluster brick and mount directories exist.
+      ansible.builtin.file:
+        path: "{{"
+        state: directory
+        mode: "0775"
+        cmd: item }}
+      with_items:
+        - "{{ gluster_brick_dir }}"
+        - "{{ gluster_mount_dir }}"
+
+    - name: Configure Gluster volume.
+      gluster.gluster.gluster_volume:
+        state: present
+        name: "{{ gluster_brick_name }}"
+        brick: "{{ gluster_brick_dir }}"
+        replicas: 2
+        cluster: "{{ groups.gluster | join(',') }}"
+        host: "{{ inventory_hostname }}"
+        force: true
+      run_once: true
+
+    - name: Ensure Gluster volume is mounted.
+      ansible.posix.mount:
+        name: "{{ gluster_mount_dir }}"
+        src: "{{ inventory_hostname }}:/{{ gluster_brick_name }}"
+        fstype: glusterfs
+        opts: defaults,_netdev
+        state: mounted

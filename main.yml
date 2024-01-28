@@ -1,16 +1,11 @@
 ---
 - name: Set up cluster-wide configuration.
-  hosts: cluster
+  hosts: swarm
   gather_facts: false
 
   handlers:
     - name: Reboot-pi
       ansible.builtin.reboot:
-
-    - name: Restart nfs
-      ansible.builtin.service:
-        name: nfs-server
-        state: restarted
 
   vars_files:
     - config.yml
@@ -19,11 +14,11 @@
     - name: Ensure cgroups are configured correctly in cmdline.txt.
       ansible.builtin.replace:
         path: /boot/cmdline.txt
-        regexp: '^([\w](?!.*\b{{ item }}\b).*)$'
-        replace: '\1 {{ item }}'
+        regexp: ^([\w](?!.*\b{{ item }}\b).*)$
+        replace: \1 {{ item }}
       with_items:
-        - "cgroup_memory=1"
-        - "cgroup_enable=memory"
+        - cgroup_memory=1
+        - cgroup_enable=memory
       notify: reboot-pi
 
 - name: Ensure docker on everything
@@ -36,57 +31,51 @@
     - name: Ensure Docker installed
       ansible.builtin.include_tasks: tasks/docker/docker.yml
 
-- name: Configure the Manager.
-  hosts: manager
-  gather_facts: false
-  vars_files:
-    - config.yml
-  tasks:
-    - name: Ensure required dependencies are installed.
-      ansible.builtin.package:
-        name:
-          - build-essential
-          - git
-        state: present
-      become: true
-    - name: Initialize the cluster using docker swarm
-      community.docker.docker_swarm:
-        state: present
-    - name: Create monitor network
-      community.docker.docker_network:
-        name: portainer_agent_network
-        driver: overlay
-        attachable: yes
-    - name: Get join command
-      ansible.builtin.shell: "docker swarm join-token worker | grep join"
-      register: join_command_raw
-    - name: Set join command
-      ansible.builtin.set_fact:
-        join_command: "{{ join_command_raw.stdout_lines[0] }}"
-
-- name: Ensure portainer-agent on nodes
-  hosts: nodes
-  gather_facts: false
-  become: true
-  vars_files:
-    - config.yml
-  tasks:
-    - name: Join swarm
-      ansible.builtin.shell: "{{ hostvars[groups['manager'][0]]['join_command'] }} >> node_joined.txt"
-      args:
-        chdir: $HOME
-        creates: node_joined.txt
-    # - name: Ensure portainer-agent installed
-    #   ansible.builtin.include_tasks: tasks/portainer/agent.yml
-
-# - name: Configure storage node.
-#   hosts: storage
+# - name: Configure the Manager.
+#   hosts: manager
 #   gather_facts: false
-#   become: true
-
 #   vars_files:
 #     - config.yml
-
 #   tasks:
-#     - name: Set up storage
-#       ansible.builtin.include_tasks: tasks/storage/{{ storage_type }}.yml
+#     - name: Ensure required dependencies are installed.
+#       ansible.builtin.package:
+#         name:
+#           - build-essential
+#           - git
+#         state: present
+#       become: true
+#     - name: Initialize the cluster using docker swarm
+#       community.docker.docker_swarm:
+#         state: present
+#     - name: Get join command
+#       ansible.builtin.shell: "docker swarm join-token worker | grep join"
+#       register: join_command_raw
+#     - name: Set join command
+#       ansible.builtin.set_fact:
+#         join_command: "{{ join_command_raw.stdout_lines[0] }}"
+
+# - name: Ensure portainer-agent on nodes
+#   hosts: nodes
+#   gather_facts: false
+#   become: true
+#   vars_files:
+#     - config.yml
+#   tasks:
+#     - name: Join swarm
+#       ansible.builtin.shell: "{{ hostvars[groups['manager'][0]]['join_command'] }} >> node_joined.txt"
+#       args:
+#         chdir: $HOME
+#         creates: node_joined.txt
+#     - name: Ensure portainer-agent installed
+#       ansible.builtin.include_tasks: tasks/portainer/agent.yml
+
+- name: Configure storage node.
+  hosts: gluster
+  gather_facts: true
+  become: true
+  tags: storage
+  vars_files:
+    - config.yml
+  tasks:
+    - name: Set up storage
+      ansible.builtin.include_tasks: tasks/storage/{{ storage_type }}.yml
